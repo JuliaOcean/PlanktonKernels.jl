@@ -24,7 +24,8 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.13'
+          - '1.11'
+          - '1'
         os:
           - ubuntu-latest
     steps:
