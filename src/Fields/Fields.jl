@@ -7,7 +7,7 @@ using ..Grids
 using ..Grids: Ax, Ay, Az, volume
 
 export vel_copy!, copy_interior!
-export Field, BoundaryConditions, interior, generate_tracers
+export Field, BoundaryConditions, interior, init_tracers, initialize_tracer!, generate_tracers
 export set_bc!
 
 mutable struct BoundaryConditions

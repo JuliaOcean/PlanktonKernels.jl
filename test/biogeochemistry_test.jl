@@ -3,29 +3,27 @@ using PlanktonKernels.Grids: RectilinearGrid
 using PlanktonKernels.Fields: Field
 import PlanktonKernels.Biogeochemistry as BGC
 using PlanktonKernels.Fields: fill_halo_tracer!, apply_bcs!, zero_fields!
-using PlanktonKernels.Grids: volume
 using PlanktonKernels.Transport: tracer_advection!, tracer_diffusion!, tracer_sinking!
 
 function test_biogeochemistry_integration()
-    expected = (:DIC,:NH4,:NO3,:PO4,:DFe,:O2,:DOC,:DON,:DOP,:PFe_inorg,:POC,:PON,:POP,:PFe_bio,:Dust)
+    expected = (:DIC,:NH4,:NO3,:PO4,:DFe,:O2,:DOC,:DON,:DOP,:PIFe,:POC,:PON,:POP,:POFe,:Dust)
     @test BGC.bgc_tracer_names == expected
-    defaults = BGC.bgc_tracer_init()
-    @test Tuple(defaults.initial_condition) == (20.0,0.5,0.8,0.10,1e-6,160.0,10.0,0.1,0.05,0.0,0.0,0.0,0.0,0.0,0.0)
-    @test all(==(0.1), defaults.rand_noise)
+    defaults = BGC.bgc_tracer_default_init()
+    @test Tuple(v.init for v in defaults) == (20.0,0.5,0.8,0.10,1e-6,160.0,10.0,0.1,0.05,0.0,0.0,0.0,0.0,0.0,0.0)
+    @test all(v -> v.rand_noise == 0.1, defaults)
     g = RectilinearGrid(size=(4,4,4),x=(0,8),y=(0,8),z=(0,-8))
-    source = (initial_condition=defaults.initial_condition,
-              rand_noise=NamedTuple{expected}(ntuple(_->0.0,15)))
-    @test_throws ArgumentError BGC.generate_bgc_tracers(CPU(),g,(initial_condition=(dye=1,),rand_noise=(dye=0,)))
+    source = NamedTuple{expected}(Tuple((init=v.init, rand_noise=0.0) for v in defaults))
+    @test_throws ArgumentError BGC.generate_bgc_tracers(CPU(),g,(dye=(init=1,rand_noise=0),))
     for FT in (Float32,Float64)
         c=BGC.generate_bgc_tracers(CPU(),g,source,FT)
         @test keys(c) == expected
         for n in expected
             @test c[n] isa Field{FT}
-            @test all(==(FT(source.initial_condition[n])), c[n].data)
+            @test all(==(FT(source[n].init)), c[n].data)
         end
-        G=PlanktonKernels.Fields.tracers_init(CPU(),g,expected,FT); tmp=PlanktonKernels.Fields.tracers_init(CPU(),g,expected,FT)
-        consume=PlanktonKernels.Fields.tracers_init(CPU(),g,expected,FT)
-        vel=PlanktonKernels.Fields.tracers_init(CPU(),g,(:u,:v,:w),FT)
+        G=PlanktonKernels.Fields.init_tracers(CPU(),g,expected,FT); tmp=PlanktonKernels.Fields.init_tracers(CPU(),g,expected,FT)
+        consume=PlanktonKernels.Fields.init_tracers(CPU(),g,expected,FT)
+        vel=PlanktonKernels.Fields.init_tracers(CPU(),g,(:u,:v,:w),FT)
         flux=similar(c.DIC.data)
         params=BGC.bgc_params_default(FT)
         @test valtype(typeof(params)) === FT
@@ -44,7 +42,7 @@ function test_biogeochemistry_integration()
         BGC.bgc_tracer_forcing!(G,tmp,c,params,FT(60))
         @test G.DIC.data[3,3,3] ≈ FT(0.01)*params["kDOC"]*60
         @test G.NO3.data[3,3,3] ≈ FT(0.01)*params["Nit"]*60
-        for group in ((:DIC,:DOC,:POC),(:NH4,:NO3,:DON,:PON),(:PO4,:DOP,:POP),(:DFe,:PFe_bio,:PFe_inorg))
+        for group in ((:DIC,:DOC,:POC),(:NH4,:NO3,:DON,:PON),(:PO4,:DOP,:POP),(:DFe,:POFe,:PIFe))
             residual=sum(G[n].data[3,3,3] for n in group)
             @test abs(residual) <= 100eps(FT)
         end
@@ -65,18 +63,18 @@ function test_biogeochemistry_integration()
         BGC.bgc_tracer_forcing!(G,tmp,reference,params,dt)
         apply_bcs!(G,reference,g,1,dt,CPU())
         for n in expected, k in 3:6, j in 3:6, i in 3:6
-            reference[n].data[i,j,k] += G[n].data[i,j,k]+consume[n].data[i,j,k]/volume(i,j,k,g)
+            reference[n].data[i,j,k] += G[n].data[i,j,k]+consume[n].data[i,j,k]
         end
         fill_halo_tracer!(reference,g)
         BGC.bgc_tracer_update!(c,G,tmp,flux,CPU(),g,params,vel,consume,dt,1)
         for n in expected; @test c[n].data ≈ reference[n].data; end
-        # Zero transport/reactions leaves only per-cell coupling, applied once.
+        # Zero transport/reactions leaves only concentration coupling, applied once.
         params=Dict(k=>zero(v) for (k,v) in params)
         zero_fields!(vel); zero_fields!(consume)
         c=BGC.generate_bgc_tracers(CPU(),g,source,FT)
         before=copy(c.DIC.data); consume.DIC.data[4,4,4]=FT(8)
         BGC.bgc_tracer_update!(c,G,tmp,flux,CPU(),g,params,vel,consume,FT(9),1)
-        @test c.DIC.data[4,4,4] == before[4,4,4]+1
+        @test c.DIC.data[4,4,4] == before[4,4,4]+8
         @test c.DIC.data[5,5,5] == before[5,5,5]
     end
 

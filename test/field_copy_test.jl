@@ -13,7 +13,7 @@ function test_field_copying(FT, TX, TY, TZ)
     expected[3:6,3:7,3:8] .= source
     @test target == expected
     @test source == reshape(collect(1:prod(ns)),ns)
-    vel=PlanktonKernels.Fields.tracers_init(CPU(),g,(:u,:v,:w),FT)
+    vel=PlanktonKernels.Fields.init_tracers(CPU(),g,(:u,:v,:w),FT)
     inputs=ntuple(3) do axis
         sz=ntuple(d->ns[d]+(d==axis && topology[d]===Bounded),3)
         reshape(collect(1:prod(sz)),sz)

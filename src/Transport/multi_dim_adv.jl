@@ -60,10 +60,10 @@ end
     kk = k + g.Hz
     @inbounds ctemp[ii, jj, kk] -= ΔT / volume(ii, jj, kk, g) * (δx⁺(ii, jj, kk, Gc, g) - c[ii, jj, kk] * δx⁺(ii, jj, kk, g, Trans_x, u))
 end
-function multi_dim_x!(tracer_temp, Gcs, tracers, u, g::AbstractGrid, ΔT, arch::Architecture)
+function multi_dim_x!(tracer_tmp, Gcs, tracers, u, g::AbstractGrid, ΔT, arch::Architecture)
     kernel! = multi_dim_x_kernel!(device(arch), (16,16), (g.Nx, g.Ny, g.Nz))
     for name in keys(tracers)
-        kernel!(tracer_temp[name].data, Gcs[name].data, tracers[name].data, u, g, ΔT)
+        kernel!(tracer_tmp[name].data, Gcs[name].data, tracers[name].data, u, g, ΔT)
     end
     return nothing
 end
@@ -77,10 +77,10 @@ end
     kk = k + g.Hz
     @inbounds ctemp[ii, jj, kk] -= ΔT / volume(ii, jj, kk, g) * (δy⁺(ii, jj, kk, Gc, g) - c[ii, jj, kk] * δy⁺(ii, jj, kk, g, Trans_y, v ))
 end
-function multi_dim_y!(tracer_temp, Gcs, tracers, v, g::AbstractGrid, ΔT, arch::Architecture)
+function multi_dim_y!(tracer_tmp, Gcs, tracers, v, g::AbstractGrid, ΔT, arch::Architecture)
     kernel! = multi_dim_y_kernel!(device(arch), (16,16), (g.Nx, g.Ny, g.Nz))
     for name in keys(tracers)
-        kernel!(tracer_temp[name].data, Gcs[name].data, tracers[name].data, v, g, ΔT)
+        kernel!(tracer_tmp[name].data, Gcs[name].data, tracers[name].data, v, g, ΔT)
     end
     return nothing
 end
@@ -94,10 +94,10 @@ end
     kk = k + g.Hz
     @inbounds ctemp[ii, jj, kk] -= ΔT / volume(ii, jj, kk, g) * (δz⁺(ii, jj, kk, Gc, g) - c[ii, jj, kk] * δz⁺(ii, jj, kk, g, Trans_z, w ))
 end
-function multi_dim_z!(tracer_temp, Gcs, tracers, w, g::AbstractGrid, ΔT, arch::Architecture)
+function multi_dim_z!(tracer_tmp, Gcs, tracers, w, g::AbstractGrid, ΔT, arch::Architecture)
     kernel! = multi_dim_z_kernel!(device(arch), (16,16), (g.Nx, g.Ny, g.Nz))
     for name in keys(tracers)
-        kernel!(tracer_temp[name].data, Gcs[name].data, tracers[name].data, w, g, ΔT)
+        kernel!(tracer_tmp[name].data, Gcs[name].data, tracers[name].data, w, g, ΔT)
     end
     return nothing
 end
@@ -108,28 +108,28 @@ function calc_tracer_tendency!(a, b, c)
     end
 end
 
-function tracer_advection!(tracer, tracer_temp, Gcs, vel, g::AbstractGrid, ΔT, arch::Architecture)
+function tracer_advection!(tracer, tracer_tmp, Gcs, vel, g::AbstractGrid, ΔT, arch::Architecture)
     for name in keys(tracer)
-        @inbounds tracer_temp[name].data .= tracer[name].data
+        @inbounds tracer_tmp[name].data .= tracer[name].data
     end
     ##### x direction
-    calc_Gcsˣ!(Gcs, tracer_temp, vel.u.data, g, ΔT, arch)
+    calc_Gcsˣ!(Gcs, tracer_tmp, vel.u.data, g, ΔT, arch)
     fill_halo_Gcs!(Gcs, g)
-    multi_dim_x!(tracer_temp, Gcs, tracer, vel.u.data, g, ΔT, arch)
-    fill_halo_tracer!(tracer_temp, g)
+    multi_dim_x!(tracer_tmp, Gcs, tracer, vel.u.data, g, ΔT, arch)
+    fill_halo_tracer!(tracer_tmp, g)
 
     ##### y direction
-    calc_Gcsʸ!(Gcs, tracer_temp, vel.v.data, g, ΔT, arch)
+    calc_Gcsʸ!(Gcs, tracer_tmp, vel.v.data, g, ΔT, arch)
     fill_halo_Gcs!(Gcs, g)
-    multi_dim_y!(tracer_temp, Gcs, tracer, vel.v.data, g, ΔT, arch)
-    fill_halo_tracer!(tracer_temp, g)
+    multi_dim_y!(tracer_tmp, Gcs, tracer, vel.v.data, g, ΔT, arch)
+    fill_halo_tracer!(tracer_tmp, g)
 
     ##### z direction
-    calc_Gcsᶻ!(Gcs, tracer_temp, vel.w.data, g, ΔT, arch)
+    calc_Gcsᶻ!(Gcs, tracer_tmp, vel.w.data, g, ΔT, arch)
     fill_halo_Gcs!(Gcs, g)
-    multi_dim_z!(tracer_temp, Gcs, tracer, vel.w.data, g, ΔT, arch)
-    fill_halo_tracer!(tracer_temp, g)
+    multi_dim_z!(tracer_tmp, Gcs, tracer, vel.w.data, g, ΔT, arch)
+    fill_halo_tracer!(tracer_tmp, g)
 
-    calc_tracer_tendency!(Gcs, tracer_temp, tracer)
+    calc_tracer_tendency!(Gcs, tracer_tmp, tracer)
 
 end

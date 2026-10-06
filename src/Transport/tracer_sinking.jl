@@ -19,8 +19,8 @@ function calc_sinking!(Gc, flux_sink, grid::AbstractGrid, ΔT, arch::Architectur
     return nothing
 end
 
-const sinking_tracers_inorg = (:PFe_inorg, :Dust)
-const sinking_tracers_org = (:PFe_bio,)
+const sinking_tracers_inorg = (:PIFe, :Dust)
+const sinking_tracers_org = (:POFe,)
 
 function tracer_sinking!(Gcs, flux_sink, arch::Architecture, g::AbstractGrid, tracers, params::Dict, ΔT)
     

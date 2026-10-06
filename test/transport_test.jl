@@ -61,11 +61,11 @@ function test_tracer_sinking(FT)
     interior(a) = @view a[3:10,3:10,3:10]
     # Existing sinking API: closed surface/bottom redistribute a uniform tracer.
     bounded = RectilinearGrid(size=(8,8,8), x=(0,8), y=(0,8), z=(0,-8), FT=FT)
-    c = (PFe_inorg=field(1), Dust=field(1), PFe_bio=field(1))
-    out = (PFe_inorg=field(0), Dust=field(0), PFe_bio=field(0))
+    c = (PIFe=field(1), Dust=field(1), POFe=field(1))
+    out = (PIFe=field(0), Dust=field(0), POFe=field(0))
     tracer_sinking!(out, zeros(FT,dims), CPU(), bounded, c,
                     Dict("w_sink_inorg"=>FT(0.2), "w_sink_org"=>FT(0.1)), FT(0.1))
-    for (name, rate) in ((:PFe_inorg,0.2),(:Dust,0.2),(:PFe_bio,0.1))
+    for (name, rate) in ((:PIFe,0.2),(:Dust,0.2),(:POFe,0.1))
         @test out[name].data[3,3,3] ≈ FT(-rate*0.1)
         @test out[name].data[3,3,10] ≈ FT(rate*0.1)
         @test abs(sum(interior(out[name].data))) < 100eps(FT)

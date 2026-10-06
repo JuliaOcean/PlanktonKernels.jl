@@ -3,14 +3,14 @@ using PlanktonKernels.Architectures: CPU
 using PlanktonKernels.Grids
 using PlanktonKernels.Transport
 using PlanktonKernels.Fields
-using PlanktonKernels.Fields: zero_fields!, tracers_init, validate_bc, validate_bcs, apply_bcs!
+using PlanktonKernels.Fields: zero_fields!, init_tracers, validate_bc, validate_bcs, apply_bcs!
 const field_test_names = (:DIC, :dye)
-field_test_init() = (initial_condition=(DIC=20.0, dye=1.0), rand_noise=(DIC=0.1, dye=0.0))
+field_test_init() = (DIC=(init=20.0, rand_noise=0.1), dye=(init=1.0, rand_noise=0.0))
 
 function test_fields()
     grid = RectilinearGrid(size = (4,6,2), x = (0,12), y = (0,12), z = (0,-8))
 
-    tracers = tracers_init(CPU(), grid, field_test_names)
+    tracers = init_tracers(CPU(), grid, field_test_names)
 
     @test Tuple(collect(keys(tracers))) == field_test_names
     @test tracers.DIC.data == zeros(8,10,6)
@@ -114,7 +114,7 @@ end
 
 function test_boundary_conditions()
     grid = RectilinearGrid(size = (4, 4, 4), x = (0,32), y = (0,32), z = (0,-32))
-    tracers=tracers_init(CPU(), grid, field_test_names)
+    tracers=init_tracers(CPU(), grid, field_test_names)
     FT = tracers.DIC.data |> eltype
     set_bc!(tracers.DIC,CPU(); pos = :west, bc_value = 0.1)
     @test tracers.DIC.bc.west == FT(0.1)
@@ -123,7 +123,7 @@ function test_boundary_conditions()
     set_bc!(tracers.DIC,CPU(); pos = :west, bc_value = ones(4,4,10))
     @test tracers.DIC.bc.west == ones(FT, 4,4,10)
 
-    Gcs = tracers_init(CPU(), grid, field_test_names)
+    Gcs = init_tracers(CPU(), grid, field_test_names)
     apply_bcs!(Gcs, tracers, grid, 10, 1, CPU())
     @test Gcs.DIC.data[3,3:6,3:6] == ones(FT, 4,4) ./ FT(8.0)
 
@@ -132,8 +132,8 @@ end
 function test_generic_fields_and_fluxes()
     g = RectilinearGrid(size=(4,4,4), x=(0,8), y=(0,8), z=(0,-8))
     for FT in (Float32,Float64)
-        c = tracers_init(CPU(), g, (:dye,:salt), FT)
-        out = tracers_init(CPU(), g, keys(c), FT)
+        c = init_tracers(CPU(), g, (:dye,:salt), FT)
+        out = init_tracers(CPU(), g, keys(c), FT)
         @test eltype(c.dye.data) === FT
         @test c.dye.data !== c.salt.data
         @test c.dye.bc !== c.salt.bc
@@ -160,30 +160,30 @@ function test_generic_fields_and_fluxes()
         # Actual Field objects work with the migrated transport entry points.
         c.dye.data .= 1
         c.salt.data .= 2
-        temp = tracers_init(CPU(),g,keys(c),FT)
-        vel = tracers_init(CPU(),g,(:u,:v,:w),FT)
+        temp = init_tracers(CPU(),g,keys(c),FT)
+        vel = init_tracers(CPU(),g,(:u,:v,:w),FT)
         zero_fields!(out)
         tracer_advection!(c,temp,out,vel,g,FT(0.1),CPU())
         tracer_diffusion!(out,CPU(),g,c,FT(0.1),FT(0.1),FT(0.1),FT(0.1))
         @test all(iszero,interior(out.dye,g))
         @test all(iszero,interior(out.salt,g))
     end
-    @test_throws ArgumentError tracers_init(CPU(),g,(:dye,:dye))
-    @test_throws ArgumentError generate_tracers(CPU(),g,(:dye,),(initial_condition=(dye=-1,),rand_noise=(dye=0,)))
+    @test_throws ArgumentError init_tracers(CPU(),g,(:dye,:dye))
+    @test_throws ArgumentError generate_tracers(CPU(),g,(:dye,),(dye=(init=-1,rand_noise=0),))
     mktempdir() do dir
         path = joinpath(dir,"dye.bin")
         serialize(path,fill(3.0,4,4,4))
-        c = generate_tracers(CPU(),g,(:dye,),Dict(:dye=>path),Float64)
+        c = generate_tracers(CPU(),g,(:dye,),(dye=path,),Float64)
         @test keys(c) == (:dye,)
         @test all(==(3.0),c.dye.data)
         serialize(path,zeros(2,2,2))
-        @test_throws ArgumentError generate_tracers(CPU(),g,(:dye,),Dict(:dye=>path))
+        @test_throws ArgumentError generate_tracers(CPU(),g,(:dye,),(dye=path,))
         serialize(path,fill(-1.0,4,4,4))
-        @test_throws ArgumentError generate_tracers(CPU(),g,(:dye,),Dict(:dye=>path))
+        @test_throws ArgumentError generate_tracers(CPU(),g,(:dye,),(dye=path,))
     end
     mask=ones(Bool,4,4,4); mask[2,2,2]=false
     masked=RectilinearGrid(size=(4,4,4), x=(0,8), y=(0,8), z=(0,-8),landmask=mask)
-    c=generate_tracers(CPU(),masked,(:dye,),(initial_condition=(dye=2,),rand_noise=(dye=0,)))
+    c=generate_tracers(CPU(),masked,(:dye,),(dye=(init=2,rand_noise=0),))
     @test interior(c.dye,masked) == 2 .* mask
 
     return nothing
@@ -191,7 +191,7 @@ end
 
 function test_explicit_tracer_selection()
     grid = RectilinearGrid(size=(4,4,4), x=(0,4), y=(0,4), z=(0,-4))
-    source = (initial_condition=(a=1.0,b=2.0,c=3.0), rand_noise=(a=0.0,b=0.0,c=0.0))
+    source = (a=(init=1.0,rand_noise=0.0), b=(init=2.0,rand_noise=0.0), c=(init=3.0,rand_noise=0.0))
     fields = generate_tracers(CPU(),grid,(:c,:a),source,Float64)
     @test keys(fields) == (:c,:a)
     @test all(==(3.0),fields.c.data)
@@ -200,10 +200,10 @@ function test_explicit_tracer_selection()
     mktempdir() do dir
         path=joinpath(dir,"field.bin")
         serialize(path,fill(2.0,4,4,4))
-        fields=generate_tracers(CPU(),grid,(:b,:a),Dict(:a=>path,:b=>path,:ignored=>"unused"))
+        fields=generate_tracers(CPU(),grid,(:b,:a),(a=path,b=path,ignored="unused"))
         @test keys(fields) == (:b,:a)
         @test all(==(2.0f0),fields.b.data)
-        @test_throws ArgumentError generate_tracers(CPU(),grid,(:missing,),Dict(:a=>path))
+        @test_throws ArgumentError generate_tracers(CPU(),grid,(:missing,),(a=path,))
     end
 
     return nothing
