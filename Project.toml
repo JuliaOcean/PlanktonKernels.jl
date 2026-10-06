@@ -1,6 +1,6 @@
 name = "PlanktonKernels"
 uuid = "19089417-46be-418e-a42f-b04816cfc5c6"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["zhenwu0728 <zhenwu@mit.edu>"]
 
 [deps]
