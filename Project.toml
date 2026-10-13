@@ -20,7 +20,7 @@ PK_MetalExt = "Metal"
 [compat]
 Adapt = "^4"
 CUDA = "^6"
-KernelAbstractions = "^0.9"
+KernelAbstractions = "^0.9, 0.10"
 Metal = "^1"
 julia = "^1.11"
 
