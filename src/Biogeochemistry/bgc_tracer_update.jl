@@ -35,7 +35,8 @@ function bgc_tracer_update!(tracers, Gcs, bgc_tracer_tmp, flux_sink, arch::Archi
     tracer_diffusion!(Gcs, arch, g, tracers, params["κh"], params["κh"], params["κv"], ΔT)
 
     ##### compute tracer sinking,for each time step
-    tracer_sinking!(Gcs, flux_sink, arch, g, tracers, params, ΔT)
+    tracer_sinking!(Gcs, flux_sink, arch, g, tracers, params["w_sink_inorg"], ΔT, sinking_tracers_inorg)
+    tracer_sinking!(Gcs, flux_sink, arch, g, tracers, params["w_sink_org"], ΔT, sinking_tracers_org)
 
     ##### compute biogeochemical forcings of tracers,for each time step
     zero_fields!(bgc_tracer_tmp)
@@ -44,7 +45,7 @@ function bgc_tracer_update!(tracers, Gcs, bgc_tracer_tmp, flux_sink, arch::Archi
     ##### apply boundary conditions
     apply_bcs!(Gcs, tracers, g, iter, ΔT, arch)
 
-    ##### apply diffusion and forcing tendency
+    ##### apply transport and forcing tendency
     apply_tendency!(tracers, Gcs, consume, g, arch)
 
     fill_halo_tracer!(tracers, g)

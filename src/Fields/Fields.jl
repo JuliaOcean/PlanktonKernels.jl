@@ -1,6 +1,7 @@
 module Fields
 using KernelAbstractions
 using Random
+using Adapt
 using Serialization: deserialize
 using ..Architectures: Architecture, array_type, device
 using ..Grids
@@ -10,13 +11,18 @@ export vel_copy!, copy_interior!
 export Field, BoundaryConditions, interior, init_tracers, initialize_tracer!, generate_tracers
 export set_bc!
 
+mutable struct BoundaryCondition
+    c::Union{Nothing, Number, AbstractArray}  # input concentration or flux boundary value （mmol/m³)
+    v::Union{Number, AbstractArray}           # input velocity boundary value (m/s)
+end
+
 mutable struct BoundaryConditions
-    west::Union{Nothing, Number, AbstractArray}
-    east::Union{Nothing, Number, AbstractArray}
-    north::Union{Nothing, Number, AbstractArray}
-    south::Union{Nothing, Number, AbstractArray}
-    top::Union{Nothing, Number, AbstractArray}
-    bottom::Union{Nothing, Number, AbstractArray}
+    west::Union{Nothing, BoundaryCondition}
+    east::Union{Nothing, BoundaryCondition}
+    north::Union{Nothing, BoundaryCondition}
+    south::Union{Nothing, BoundaryCondition}
+    top::Union{Nothing, BoundaryCondition}
+    bottom::Union{Nothing, BoundaryCondition}
 end
 
 struct Field{FT}
@@ -28,6 +34,7 @@ include("halo_regions.jl")
 include("copy_fields.jl")
 include("boundary_conditions.jl")
 include("tracer_fields.jl")
+include("utils.jl")
 include("apply_bcs.jl")
 
 end

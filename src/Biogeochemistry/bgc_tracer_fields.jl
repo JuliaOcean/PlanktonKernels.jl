@@ -1,5 +1,7 @@
 const bgc_tracer_names = (:DIC, :NH4, :NO3, :PO4, :DFe, :O2, :DOC, :DON, :DOP,
                           :PIFe, :POC, :PON, :POP, :POFe, :Dust)
+const sinking_tracers_inorg = (:PIFe, :Dust)
+const sinking_tracers_org = (:POFe,)
 
 """
     bgc_tracer_default_init()

@@ -19,25 +19,12 @@ function calc_sinking!(Gc, flux_sink, grid::AbstractGrid, ΔT, arch::Architectur
     return nothing
 end
 
-const sinking_tracers_inorg = (:PIFe, :Dust)
-const sinking_tracers_org = (:POFe,)
-
-function tracer_sinking!(Gcs, flux_sink, arch::Architecture, g::AbstractGrid, tracers, params::Dict, ΔT)
+function tracer_sinking!(Gcs, flux_sink, arch::Architecture, g::AbstractGrid, tracers, w_sink::Number, ΔT, tr_names::Tuple)
     
-    for name in sinking_tracers_inorg
-        w_sink_inorg = params["w_sink_inorg"]
-        calc_sinking_flux!(flux_sink, g, w_sink_inorg, tracers[name].data)
+    for name in tr_names
+        calc_sinking_flux!(flux_sink, g, w_sink, tracers[name].data)
         fill_halo_flux_sink!(flux_sink, g)
         calc_sinking!(Gcs[name].data, flux_sink, g, ΔT, arch)
     end
-    
-    for name in sinking_tracers_org
-        w_sink_org = params["w_sink_org"]
-        calc_sinking_flux!(flux_sink, g, w_sink_org, tracers[name].data)
-        fill_halo_flux_sink!(flux_sink, g)
-        calc_sinking!(Gcs[name].data, flux_sink, g, ΔT, arch)
-    end
-
     return nothing
 end
-

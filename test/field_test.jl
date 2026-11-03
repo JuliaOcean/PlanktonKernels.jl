@@ -116,12 +116,12 @@ function test_boundary_conditions()
     grid = RectilinearGrid(size = (4, 4, 4), x = (0,32), y = (0,32), z = (0,-32))
     tracers=init_tracers(CPU(), grid, field_test_names)
     FT = tracers.DIC.data |> eltype
-    set_bc!(tracers.DIC,CPU(); pos = :west, bc_value = 0.1)
-    @test tracers.DIC.bc.west == FT(0.1)
-    set_bc!(tracers.DIC,CPU(); pos = :west, bc_value = ones(4,4))
-    @test tracers.DIC.bc.west == ones(FT, 4,4)
-    set_bc!(tracers.DIC,CPU(); pos = :west, bc_value = ones(4,4,10))
-    @test tracers.DIC.bc.west == ones(FT, 4,4,10)
+    set_bc!(tracers.DIC,CPU(); pos = :west, bc_value_v=1, bc_value_c= 0.1)
+    @test tracers.DIC.bc.west.c == FT(0.1)
+    set_bc!(tracers.DIC,CPU(); pos = :west, bc_value_v=1, bc_value_c= ones(4,4))
+    @test tracers.DIC.bc.west.c == ones(FT, 4,4)
+    set_bc!(tracers.DIC,CPU(); pos = :west, bc_value_v=1, bc_value_c= ones(4,4,10))
+    @test tracers.DIC.bc.west.c == ones(FT, 4,4,10)
 
     Gcs = init_tracers(CPU(), grid, field_test_names)
     apply_bcs!(Gcs, tracers, grid, 10, 1, CPU())
@@ -144,7 +144,7 @@ function test_generic_fields_and_fluxes()
                                   (:bottom,(4,4,6),1),(:top,(4,4,3),-1))
             for value in (2,fill(2,4,4),cat(fill(1,4,4),fill(2,4,4);dims=3))
                 zero_fields!(out)
-                set_bc!(c.dye,CPU();pos,bc_value=value)
+                set_bc!(c.dye,CPU();pos,bc_value_v=1, bc_value_c=value)
                 @test validate_bcs(c,g,2) === nothing
                 apply_bcs!(out,c,g,2,FT(0.5),CPU())
                 @test out.dye.data[index...] ≈ FT(sign*0.5)
@@ -153,10 +153,10 @@ function test_generic_fields_and_fluxes()
                 setproperty!(c.dye.bc,pos,nothing)
             end
         end
-        @test_throws ArgumentError set_bc!(c.dye,CPU();pos=:invalid,bc_value=1)
-        @test_throws ArgumentError validate_bc(ones(3,4),(4,4),2)
-        @test_throws ArgumentError validate_bc(ones(4,4,3),(4,4),2)
-        @test_throws ArgumentError validate_bc(ones(4),(4,4),2)
+        @test_throws ArgumentError set_bc!(c.dye,CPU();pos=:invalid,bc_value_v=1, bc_value_c=1)
+        @test_throws ArgumentError validate_bc(PlanktonKernels.Fields.BoundaryCondition(ones(3,4),1),(4,4),2)
+        @test_throws ArgumentError validate_bc(PlanktonKernels.Fields.BoundaryCondition(ones(4,4,3),1),(4,4),2)
+        @test_throws ArgumentError validate_bc(PlanktonKernels.Fields.BoundaryCondition(ones(4),1),(4,4),2)
         # Actual Field objects work with the migrated transport entry points.
         c.dye.data .= 1
         c.salt.data .= 2
