@@ -12,7 +12,7 @@ boundary_test_view(f, g) = @view f.data[g.Hx+1:g.Hx+g.Nx, g.Hy+1:g.Hy+g.Ny, g.Hz
                 g = RectilinearGrid(size=(3,4,2), x=(0,6), y=(0,12), z=(0,-8), FT=FT)
                 c = init_tracers(CPU(), g, (:dye,), FT)
                 # Concentration and velocity must create a usable boundary condition.
-                set_bc!(c.dye, CPU(); pos=:east, bc_value_c=FT(4), bc_value_v=FT(0.5))
+                set_bc!(c.dye, CPU(); pos=:east, bc_c=FT(4), bc_v=FT(0.5))
                 @test c.dye.bc.east isa BoundaryCondition
                 @test getbc(c.dye.bc.east.c, c.dye.bc.east.v, 1, 1, 1) == FT(2)
             end
@@ -30,7 +30,7 @@ boundary_test_view(f, g) = @view f.data[g.Hx+1:g.Hx+g.Nx, g.Hy+1:g.Hy+g.Ny, g.Hz
             @testset "Setter accepts local concentration mode" begin
                 g = RectilinearGrid(size=(3,4,2), x=(0,6), y=(0,12), z=(0,-8), FT=FT)
                 c = init_tracers(CPU(), g, (:dye,), FT)
-                set_bc!(c.dye, CPU(); pos=:east, bc_value_c=nothing, bc_value_v=FT(0.5))
+                set_bc!(c.dye, CPU(); pos=:east, bc_c=nothing, bc_v=FT(0.5))
                 @test c.dye.bc.east.c === nothing
             end
             @testset "Unset boundaries are no-ops" begin
@@ -94,7 +94,7 @@ boundary_test_view(f, g) = @view f.data[g.Hx+1:g.Hx+g.Nx, g.Hy+1:g.Hy+g.Ny, g.Hz
                     c = init_tracers(CPU(), g, (:dye,), FT)
                     out = init_tracers(CPU(), g, (:dye,), FT)
                     c.dye.data .= FT(5)
-                    set_bc!(c.dye, CPU(); pos=:east, bc_value_c=concentration, bc_value_v=velocity)
+                    set_bc!(c.dye, CPU(); pos=:east, bc_c=concentration, bc_v=velocity)
                     expected = copy(out.dye.data)
                     for t in 1:2
                         for k in 1:g.Nz, j in 1:g.Ny
