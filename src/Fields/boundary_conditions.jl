@@ -10,10 +10,10 @@ end
 
 "Set a flux boundary value on a field, converting it to the field precision and architecture."
 function set_bc!(field::Field{FT}, arch::Architecture; pos::Symbol, 
-                 bc_value_c::Union{Nothing,Number,AbstractArray}, bc_value_v::Union{Number,AbstractArray}) where FT
+                 bc_c::Union{Nothing,Number,AbstractArray}, bc_v::Union{Number,AbstractArray}) where FT
     pos in fieldnames(BoundaryConditions) || throw(ArgumentError("Unknown boundary: $pos"))
-    c = bc_value_c === nothing ? nothing : FT.(bc_value_c)
-    v = FT.(bc_value_v)
+    c = bc_c === nothing ? nothing : FT.(bc_c)
+    v = FT.(bc_v)
     c isa AbstractArray && (c = array_type(arch)(c))
     v isa AbstractArray && (v = array_type(arch)(v))
     setproperty!(field.bc, pos, BoundaryCondition(c, v))
