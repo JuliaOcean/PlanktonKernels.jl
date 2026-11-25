@@ -1,7 +1,6 @@
 module PK_MetalExt
 
 using Metal
-using Metal.MetalKernels
 import PlanktonKernels.Architectures: GPU, device, array_type, rng_type, isfunctional, unsafe_free!
 
 device(::GPU) = MetalBackend()
